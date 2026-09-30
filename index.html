@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>奧瑞岡辯論賽自動司鈴系統</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --panel: #111827;
+    --panel2: #1f2937;
+    --text: #f8fafc;
+    --muted: #94a3b8;
+    --accent: #38bdf8;
+    --green: #22c55e;
+    --yellow: #f59e0b;
+    --red: #ef4444;
+    --border: #334155;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", sans-serif;
+    background: radial-gradient(circle at top, #172554 0%, var(--bg) 45%);
+    color: var(--text);
+  }
+  .app {
+    width: min(1180px, 96vw);
+    margin: 0 auto;
+    padding: 24px 0 40px;
+  }
+  h1 {
+    margin: 0 0 18px;
+    text-align: center;
+    font-size: clamp(26px, 4vw, 44px);
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: 1.4fr .9fr;
+    gap: 18px;
+  }
+  .card {
+    background: rgba(17,24,39,.92);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    box-shadow: 0 18px 50px rgba(0,0,0,.25);
+    padding: 20px;
+  }
+  .timer-card {
+    min-height: 520px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  .phase-wrap {
+    text-align: center;
+    margin-top: 6px;
+  }
+  #phaseName {
+    width: 100%;
+    border: 0;
+    background: transparent;
+    color: white;
+    text-align: center;
+    font-size: clamp(24px, 4vw, 40px);
+    font-weight: 800;
+    outline: none;
+  }
+  .timer {
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+    font-size: clamp(84px, 15vw, 160px);
+    font-weight: 900;
+    line-height: 1;
+    letter-spacing: -5px;
+    margin: 20px 0 10px;
+  }
+  .status {
+    text-align: center;
+    color: var(--muted);
+    font-size: 18px;
+    min-height: 28px;
+  }
+  .progress {
+    height: 14px;
+    border-radius: 999px;
+    background: #020617;
+    overflow: hidden;
+    margin: 16px 0 10px;
+    border: 1px solid var(--border);
+  }
+  #progressBar {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--green), var(--yellow), var(--red));
+    transition: width .08s linear;
+  }
+  .controls {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-top: 16px;
+  }
+  button {
+    border: 0;
+    border-radius: 14px;
+    padding: 15px 16px;
+    font-size: 17px;
+    font-weight: 800;
+    cursor: pointer;
+    color: #fff;
+    background: #334155;
+  }
+  button:hover { filter: brightness(1.08); }
+  .primary { background: #0369a1; }
+  .success { background: #15803d; }
+  .warning { background: #b45309; }
+  .danger { background: #b91c1c; }
+  .secondary { background: #475569; }
+  .manual-bell {
+    grid-column: span 3;
+    font-size: 22px;
+    padding: 18px;
+    background: #7c3aed;
+  }
+  .meta {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    color: var(--muted);
+    font-size: 14px;
+    margin-top: 12px;
+  }
+  .section-title {
+    font-size: 21px;
+    font-weight: 900;
+    margin: 0 0 14px;
+  }
+  .field {
+    margin-bottom: 14px;
+  }
+  label {
+    display: block;
+    color: #cbd5e1;
+    margin-bottom: 6px;
+    font-size: 14px;
+    font-weight: 700;
+  }
+  input[type="number"], input[type="text"], select {
+    width: 100%;
+    background: #0f172a;
+    border: 1px solid var(--border);
+    color: white;
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 16px;
+  }
+  .inline {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .schedule-header, .schedule-row {
+    display: grid;
+    grid-template-columns: 1.2fr .8fr .8fr 42px;
+    gap: 8px;
+    align-items: center;
+  }
+  .schedule-header {
+    color: var(--muted);
+    font-size: 13px;
+    margin-bottom: 6px;
+  }
+  .schedule-row {
+    margin-bottom: 8px;
+  }
+  .schedule-row input {
+    width: 100%;
+    background: #0f172a;
+    border: 1px solid var(--border);
+    color: white;
+    border-radius: 9px;
+    padding: 9px;
+    font-size: 14px;
+  }
+  .remove-btn {
+    padding: 9px 0;
+    border-radius: 9px;
+    background: #7f1d1d;
+  }
+  .small-btn {
+    padding: 10px 12px;
+    font-size: 14px;
+  }
+  .settings-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+  }
+  .hint {
+    margin-top: 12px;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.6;
+  }
+  .flash {
+    animation: flash .25s 3 alternate;
+  }
+  @keyframes flash {
+    from { box-shadow: 0 0 0 rgba(239,68,68,0); }
+    to { box-shadow: 0 0 45px rgba(239,68,68,.85); }
+  }
+  body.fullscreen .app {
+    width: 100vw;
+    padding: 12px;
+  }
+  body.fullscreen .settings-card {
+    display: none;
+  }
+  body.fullscreen .grid {
+    grid-template-columns: 1fr;
+  }
+  body.fullscreen .timer-card {
+    min-height: calc(100vh - 24px);
+  }
+  body.fullscreen .timer {
+    font-size: min(22vw, 240px);
+  }
+  @media (max-width: 860px) {
+    .grid { grid-template-columns: 1fr; }
+    .timer-card { min-height: auto; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>奧瑞岡辯論賽自動司鈴系統</h1>
+
+  <div class="grid">
+    <section class="card timer-card" id="timerCard">
+      <div>
+        <div class="phase-wrap">
+          <input id="phaseName" type="text" value="正方一辯申論" aria-label="目前階段名稱">
+        </div>
+
+        <div id="timer" class="timer">00:00.0</div>
+        <div id="status" class="status">尚未開始</div>
+
+        <div class="progress">
+          <div id="progressBar"></div>
+        </div>
+
+        <div class="meta">
+          <span id="nextBell">下一次響鈴：尚未設定</span>
+          <span id="elapsedText">已用時間 0 秒</span>
+        </div>
+      </div>
+
+      <div class="controls">
+        <button id="startPauseBtn" class="success">開始</button>
+        <button id="resetBtn" class="warning">重設</button>
+        <button id="fullscreenBtn" class="secondary">全螢幕</button>
+        <button id="minusBtn">-1 秒</button>
+        <button id="plusBtn">+1 秒</button>
+        <button id="testBtn" class="primary">測試鈴聲</button>
+        <button id="manualBellBtn" class="manual-bell">🔔 手動按鈴</button>
+      </div>
+    </section>
+
+    <aside class="card settings-card">
+      <h2 class="section-title">計時與鈴聲設定</h2>
+
+      <div class="field">
+        <label for="duration">本階段總時間（秒）</label>
+        <input id="duration" type="number" min="1" step="1" value="180">
+      </div>
+
+      <div class="field inline">
+        <div>
+          <label for="toneFreq">鈴聲音高（Hz）</label>
+          <input id="toneFreq" type="number" min="100" max="2000" step="10" value="880">
+        </div>
+        <div>
+          <label for="toneDuration">單次鈴聲長度（毫秒）</label>
+          <input id="toneDuration" type="number" min="80" max="3000" step="10" value="500">
+        </div>
+      </div>
+
+      <div class="field inline">
+        <div>
+          <label for="ringGap">同一組多響間隔（毫秒）</label>
+          <input id="ringGap" type="number" min="50" max="5000" step="10" value="350">
+        </div>
+        <div>
+          <label for="volume">音量</label>
+          <input id="volume" type="number" min="0.05" max="1" step="0.05" value="0.7">
+        </div>
+      </div>
+
+      <h3 class="section-title" style="font-size:18px;margin-top:22px;">響鈴時間表</h3>
+
+      <div class="schedule-header">
+        <span>時間(秒)</span>
+        <span>響幾聲</span>
+        <span>間隔(ms)</span>
+        <span></span>
+      </div>
+      <div id="scheduleList"></div>
+
+      <div class="settings-actions">
+        <button id="addRingBtn" class="small-btn primary">＋新增響鈴</button>
+        <button id="preset333Btn" class="small-btn secondary">載入 3-3-3 範例</button>
+        <button id="clearBtn" class="small-btn danger">清空設定</button>
+      </div>
+
+      <div class="hint">
+        「時間」以開始後經過的秒數計算，例如 150 秒代表 2:30。<br>
+        每一列都可以獨立設定「響幾聲」和「每聲之間隔」。<br>
+        設定會自動儲存在本機瀏覽器，不需網路。
+      </div>
+    </aside>
+  </div>
+</div>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+
+  const timerEl = $("timer");
+  const statusEl = $("status");
+  const progressBar = $("progressBar");
+  const nextBellEl = $("nextBell");
+  const elapsedText = $("elapsedText");
+  const startPauseBtn = $("startPauseBtn");
+  const timerCard = $("timerCard");
+
+  let running = false;
+  let elapsedMs = 0;
+  let startPerf = 0;
+  let rafId = null;
+  let fired = new Set();
+  let audioCtx = null;
+
+  const defaultSchedule = [
+    { time: 150, count: 1, gap: 350 },
+    { time: 180, count: 2, gap: 350 }
+  ];
+
+  function getAudioContext() {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (audioCtx.state === "suspended") audioCtx.resume();
+    return audioCtx;
+  }
+
+  async function bell(count = 1, gapOverride = null) {
+    const ctx = getAudioContext();
+    const freq = Number($("toneFreq").value) || 880;
+    const dur = (Number($("toneDuration").value) || 500) / 1000;
+    const volume = Math.max(0.01, Math.min(1, Number($("volume").value) || 0.7));
+    const gapValue = (gapOverride !== null && gapOverride !== undefined) ? gapOverride : (Number($("ringGap").value) || 350);
+    const gap = gapValue / 1000;
+
+    for (let i = 0; i < count; i++) {
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(freq, now);
+
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(volume, now + 0.015);
+      gain.gain.setValueAtTime(volume, Math.max(now + 0.02, now + dur - 0.06));
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start(now);
+      osc.stop(now + dur + 0.03);
+
+      timerCard.classList.remove("flash");
+      void timerCard.offsetWidth;
+      timerCard.classList.add("flash");
+
+      if (i < count - 1) {
+        await new Promise(resolve => setTimeout(resolve, (dur + gap) * 1000));
+      }
+    }
+  }
+
+  function formatTime(ms) {
+    const totalTenths = Math.max(0, Math.floor(ms / 100));
+    const minutes = Math.floor(totalTenths / 600);
+    const seconds = Math.floor((totalTenths % 600) / 10);
+    const tenths = totalTenths % 10;
+    return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}.${tenths}`;
+  }
+
+  function scheduleRows() {
+    return [...document.querySelectorAll(".schedule-row")].map((row, index) => ({
+      id: index,
+      time: Math.max(0, Number(row.querySelector(".ring-time").value) || 0),
+      count: Math.max(1, Math.floor(Number(row.querySelector(".ring-count").value) || 1)),
+      gap: Math.max(0, Number(row.querySelector(".ring-gap").value) || 0)
+    })).sort((a, b) => a.time - b.time);
+  }
+
+  function renderNextBell() {
+    const elapsedSec = elapsedMs / 1000;
+    const rows = scheduleRows().filter(r => r.time > elapsedSec + 0.05);
+    if (!rows.length) {
+      nextBellEl.textContent = "下一次響鈴：無";
+      return;
+    }
+    const next = rows[0];
+    nextBellEl.textContent = `下一次響鈴：${formatClock(next.time)}（${next.count} 聲）`;
+  }
+
+  function formatClock(sec) {
+    const m = Math.floor(sec / 60);
+    const s = Math.floor(sec % 60);
+    return `${m}:${String(s).padStart(2, "0")}`;
+  }
+
+  function updateDisplay() {
+    timerEl.textContent = formatTime(elapsedMs);
+
+    const duration = Math.max(1, Number($("duration").value) || 180);
+    const elapsedSec = elapsedMs / 1000;
+    const pct = Math.min(100, (elapsedSec / duration) * 100);
+    progressBar.style.width = `${pct}%`;
+
+    elapsedText.textContent = `已用時間 ${elapsedSec.toFixed(1)} 秒`;
+
+    if (elapsedSec < duration) {
+      statusEl.textContent = running ? `計時中｜剩餘 ${(duration - elapsedSec).toFixed(1)} 秒` : "已暫停";
+      timerEl.style.color = elapsedSec >= duration * 0.833 ? "#f59e0b" : "#f8fafc";
+    } else {
+      statusEl.textContent = `已超時 ${(elapsedSec - duration).toFixed(1)} 秒`;
+      timerEl.style.color = "#ef4444";
+    }
+    if (!running && elapsedMs === 0) statusEl.textContent = "尚未開始";
+
+    renderNextBell();
+  }
+
+  function tick(now) {
+    if (!running) return;
+    elapsedMs = now - startPerf;
+    checkRings();
+    updateDisplay();
+    rafId = requestAnimationFrame(tick);
+  }
+
+  function checkRings() {
+    const elapsedSec = elapsedMs / 1000;
+    const rows = scheduleRows();
+
+    rows.forEach((r, idx) => {
+      const key = `${r.time}-${r.count}-${r.gap}-${idx}`;
+      if (!fired.has(key) && elapsedSec >= r.time) {
+        fired.add(key);
+        bell(r.count, r.gap);
+      }
+    });
+  }
+
+  function startPause() {
+    getAudioContext();
+    if (!running) {
+      running = true;
+      startPerf = performance.now() - elapsedMs;
+      startPauseBtn.textContent = "暫停";
+      startPauseBtn.className = "danger";
+      rafId = requestAnimationFrame(tick);
+    } else {
+      running = false;
+      cancelAnimationFrame(rafId);
+      startPauseBtn.textContent = "繼續";
+      startPauseBtn.className = "success";
+      updateDisplay();
+    }
+  }
+
+  function resetTimer() {
+    running = false;
+    cancelAnimationFrame(rafId);
+    elapsedMs = 0;
+    fired.clear();
+    startPauseBtn.textContent = "開始";
+    startPauseBtn.className = "success";
+    updateDisplay();
+  }
+
+  function adjustTime(deltaSec) {
+    elapsedMs = Math.max(0, elapsedMs + deltaSec * 1000);
+    if (running) startPerf = performance.now() - elapsedMs;
+    fired.clear();
+    const elapsedSec = elapsedMs / 1000;
+    scheduleRows().forEach((r, idx) => {
+      if (r.time <= elapsedSec) fired.add(`${r.time}-${r.count}-${r.gap}-${idx}`);
+    });
+    updateDisplay();
+  }
+
+  function addRow(item = { time: 150, count: 1, gap: 350 }) {
+    const row = document.createElement("div");
+    row.className = "schedule-row";
+    row.innerHTML = `
+      <input class="ring-time" type="number" min="0" step="1" value="${item.time}">
+      <input class="ring-count" type="number" min="1" step="1" value="${item.count}">
+      <input class="ring-gap" type="number" min="0" step="10" value="${item.gap ?? 350}">
+      <button class="remove-btn" title="刪除">×</button>
+    `;
+    row.querySelector(".remove-btn").addEventListener("click", () => {
+      row.remove();
+      fired.clear();
+      saveSettings();
+      updateDisplay();
+    });
+    row.querySelectorAll("input").forEach(input => input.addEventListener("input", () => {
+      fired.clear();
+      saveSettings();
+      updateDisplay();
+    }));
+    $("scheduleList").appendChild(row);
+  }
+
+  function loadPreset333() {
+    $("duration").value = 180;
+    $("scheduleList").innerHTML = "";
+    defaultSchedule.forEach(addRow);
+    fired.clear();
+    saveSettings();
+    resetTimer();
+  }
+
+  function saveSettings() {
+    const data = {
+      phaseName: $("phaseName").value,
+      duration: $("duration").value,
+      toneFreq: $("toneFreq").value,
+      toneDuration: $("toneDuration").value,
+      ringGap: $("ringGap").value,
+      volume: $("volume").value,
+      schedule: scheduleRows()
+    };
+    localStorage.setItem("oregonDebateBellSettings", JSON.stringify(data));
+  }
+
+  function loadSettings() {
+    const raw = localStorage.getItem("oregonDebateBellSettings");
+    if (!raw) {
+      defaultSchedule.forEach(addRow);
+      return;
+    }
+    try {
+      const data = JSON.parse(raw);
+      $("phaseName").value = data.phaseName ?? "正方一辯申論";
+      $("duration").value = data.duration ?? 180;
+      $("toneFreq").value = data.toneFreq ?? 880;
+      $("toneDuration").value = data.toneDuration ?? 500;
+      $("ringGap").value = data.ringGap ?? 350;
+      $("volume").value = data.volume ?? 0.7;
+      (data.schedule?.length ? data.schedule : defaultSchedule).forEach(addRow);
+    } catch {
+      defaultSchedule.forEach(addRow);
+    }
+  }
+
+  async function toggleFullscreen() {
+    try {
+      if (!document.fullscreenElement) {
+        await document.documentElement.requestFullscreen();
+        document.body.classList.add("fullscreen");
+        $("fullscreenBtn").textContent = "離開全螢幕";
+      } else {
+        await document.exitFullscreen();
+      }
+    } catch {}
+  }
+
+  document.addEventListener("fullscreenchange", () => {
+    const isFs = !!document.fullscreenElement;
+    document.body.classList.toggle("fullscreen", isFs);
+    $("fullscreenBtn").textContent = isFs ? "離開全螢幕" : "全螢幕";
+  });
+
+  startPauseBtn.addEventListener("click", startPause);
+  $("resetBtn").addEventListener("click", resetTimer);
+  $("fullscreenBtn").addEventListener("click", toggleFullscreen);
+  $("manualBellBtn").addEventListener("click", () => bell(1));
+  $("testBtn").addEventListener("click", () => bell(1));
+  $("minusBtn").addEventListener("click", () => adjustTime(-1));
+  $("plusBtn").addEventListener("click", () => adjustTime(1));
+  $("addRingBtn").addEventListener("click", () => {
+    addRow({time: 60, count: 1, gap: Number($("ringGap").value) || 350});
+    saveSettings();
+  });
+  $("preset333Btn").addEventListener("click", loadPreset333);
+  $("clearBtn").addEventListener("click", () => {
+    $("scheduleList").innerHTML = "";
+    fired.clear();
+    saveSettings();
+    updateDisplay();
+  });
+
+  ["phaseName", "duration", "toneFreq", "toneDuration", "ringGap", "volume"].forEach(id => {
+    $(id).addEventListener("input", () => {
+      saveSettings();
+      updateDisplay();
+    });
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (["INPUT", "SELECT", "TEXTAREA"].includes(document.activeElement.tagName)) return;
+    if (e.code === "Space") {
+      e.preventDefault();
+      startPause();
+    } else if (e.key.toLowerCase() === "r") {
+      resetTimer();
+    } else if (e.key.toLowerCase() === "b") {
+      bell(1);
+    } else if (e.key.toLowerCase() === "f") {
+      toggleFullscreen();
+    }
+  });
+
+  loadSettings();
+  updateDisplay();
+})();
+</script>
+</body>
+</html>
